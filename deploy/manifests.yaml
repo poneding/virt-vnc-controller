@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virt-vnc
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virt-vnc-controller
+  namespace: virt-vnc
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: virt-vnc-controller
+subjects:
+  - kind: ServiceAccount
+    name: virt-vnc-controller
+    namespace: virt-vnc
+roleRef:
+  kind: ClusterRole
+  name: virt-vnc-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: virt-vnc-controller
+rules:
+  - apiGroups:
+      - subresources.kubevirt.io
+    resources:
+      - virtualmachineinstances/console
+      - virtualmachineinstances/vnc
+    verbs:
+      - get
+  - apiGroups:
+      - kubevirt.io
+    resources:
+      - virtualmachines
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virt-vnc-controller
+  namespace: virt-vnc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: virt-vnc-controller
+  template:
+    metadata:
+      labels:
+        app: virt-vnc-controller
+    spec:
+      serviceAccountName: virt-vnc-controller
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Equal"
+          value: ""
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Equal"
+          value: ""
+          effect: "NoSchedule"
+      containers:
+        - name: virt-vnc-controller
+          image: poneding/virt-vnc-controller
+          livenessProbe:
+            tcpSocket:
+              port: 8081
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
