@@ -12,6 +12,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	kubevirtcorev1 "kubevirt.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,7 +34,7 @@ func (r *VirtualMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err := r.Get(ctx, req.NamespacedName, vm); err != nil {
 		if k8serrors.IsNotFound(err) {
 			// VirtualMachine is deleted, reclaim resources
-			if err := r.tryReclaimVirtVNC(ctx, vm); err != nil {
+			if err := r.tryReclaimVirtVNC(ctx, req.NamespacedName); err != nil {
 				return ctrl.Result{RequeueAfter: time.Second * 10}, err
 			}
 		}
@@ -249,7 +250,7 @@ func (r *VirtualMachineReconciler) tryBuildVirtVNC(ctx context.Context, vm *kube
 	return nil
 }
 
-func (r *VirtualMachineReconciler) tryReclaimVirtVNC(ctx context.Context, vm *kubevirtcorev1.VirtualMachine) error {
+func (r *VirtualMachineReconciler) tryReclaimVirtVNC(ctx context.Context, vm types.NamespacedName) error {
 	virtVNCName := formatVirtVNCName(vm.Name)
 
 	// Delete the virt-vnc service
